@@ -1,6 +1,8 @@
 ARG BASE_IMAGE=docker.io/python:3.13-slim
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
 
-FROM ${BASE_IMAGE} AS base
+FROM --platform=$TARGETPLATFORM ${BASE_IMAGE} AS base
 
 ENV PIP_CACHE_DIR=/opt/cache/pip
 ENV POETRY_CACHE_DIR=/opt/cache/poetry
@@ -32,7 +34,7 @@ FROM builder AS runtime-base
 RUN poetry build --format wheel
 RUN /opt/app/.venv/bin/python -m pip install dist/*.whl --no-deps --no-cache-dir
 
-FROM ${BASE_IMAGE} AS runtime
+FROM --platform=$TARGETPLATFORM ${BASE_IMAGE} AS runtime
 
 COPY --from=runtime-base /opt/app/.venv /opt/app/.venv
 
