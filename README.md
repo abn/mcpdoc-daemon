@@ -1,5 +1,7 @@
 # MCPDoc Daemon
 
+[![PyPI](https://img.shields.io/pypi/v/mcpdoc-daemon.svg)](https://pypi.org/project/mcpdoc-daemon/)
+
 A containerized daemon that monitors configuration files and automatically reloads [mcpdoc](https://github.com/langchain-ai/mcpdoc) when changes are detected.
 
 ## About MCPDoc
@@ -102,6 +104,14 @@ graph TB
 4. **Subprocess Launch**: Starts mcpdoc CLI as a subprocess with SSE transport
 5. **File Monitoring**: Continuously watches for configuration file changes
 6. **Auto-Restart**: Gracefully terminates and restarts subprocess on changes
+
+## Installation
+
+### Using `pipx`
+
+```bash
+pipx install mcpdoc-daemon
+```
 
 ## Quick Start
 
