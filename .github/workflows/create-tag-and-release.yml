@@ -70,3 +70,25 @@ jobs:
           tag: ${{ steps.tag.outputs.tag_name }}
           name: Release ${{ steps.tag.outputs.tag_name }}
           generateReleaseNotes: true
+
+      - name: Bump version after release
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          poetry version minor
+          echo "Version bumped to $(poetry version --short)"
+
+      - name: Commit and push version bump
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add pyproject.toml
+          git commit -m "Bump version after release ${{ steps.tag.outputs.tag_name }}"
+          git push origin main
+
+      - name: Show version bump (dry run)
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        run: |
+          echo "DRY RUN MODE - No version bump will be performed"
+          echo "Would bump version using: poetry version minor"
+          echo "Would commit and push pyproject.toml to main branch"
