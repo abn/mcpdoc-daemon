@@ -1,0 +1,74 @@
+name: Create Tag and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name (leave empty to use version from pyproject.toml)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run (only show what would happen, do not create tag or release)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  create-tag-and-release:
+    name: Create Tag and Release
+    runs-on: ubuntu-latest
+    # Only allow running from main branch
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Determine tag name
+        id: tag
+        run: |
+          if [ -z "${{ github.event.inputs.tag_name }}" ]; then
+            VERSION=$(poetry version --short)
+            TAG_NAME="v${VERSION}"
+          else
+            TAG_NAME="${{ github.event.inputs.tag_name }}"
+          fi
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "Using tag: ${TAG_NAME}"
+
+      - name: Dry run - Show what would happen
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        run: |
+          echo "DRY RUN MODE - No changes will be made"
+          echo "Would create tag: ${{ steps.tag.outputs.tag_name }}"
+          echo "Would create release: Release ${{ steps.tag.outputs.tag_name }}"
+
+      - name: Create and push tag
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag -a ${{ steps.tag.outputs.tag_name }} -m "Release ${{ steps.tag.outputs.tag_name }}"
+          git push origin ${{ steps.tag.outputs.tag_name }}
+
+      - name: Create Release
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.tag.outputs.tag_name }}
+          name: Release ${{ steps.tag.outputs.tag_name }}
+          generateReleaseNotes: true
