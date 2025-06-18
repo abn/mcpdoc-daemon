@@ -34,9 +34,7 @@ jobs:
           python-version: "3.x"
 
       - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        run: pipx install poetry
 
       - name: Determine tag name
         id: tag
