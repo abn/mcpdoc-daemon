@@ -156,7 +156,7 @@ podman run -d \
   --name mcpdoc-daemon \
   -p 8080:8080 \
   -v ./config:/config:z,ro \
-  mcpdoc-daemon
+  ghcr.io/abn/mcpdoc-daemon:latest
 ```
 
 ## Configuration Structure
