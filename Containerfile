@@ -49,4 +49,4 @@ EXPOSE 8080
 
 VOLUME ["/config"]
 
-CMD ["/opt/app/.venv/bin/mcpdoc-daemon"]
+ENTRYPOINT ["/opt/app/.venv/bin/mcpdoc-daemon"]
