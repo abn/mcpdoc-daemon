@@ -2,16 +2,16 @@
 
 [![PyPI](https://img.shields.io/pypi/v/mcpdoc-daemon.svg)](https://pypi.org/project/mcpdoc-daemon/)
 
-A simple daemon that monitors configuration files and automatically reloads [mcpdoc](https://github.com/langchain-ai/mcpdoc) 
+A simple daemon that monitors configuration files and automatically reloads [mcpdoc](https://github.com/langchain-ai/mcpdoc)
 when changes are detected.
 
 ## About MCPDoc
 
-[MCPDoc](https://github.com/langchain-ai/mcpdoc) is a tool that serves documentation using the Model Context Protocol (MCP). It allows you to create 
-documentation servers that can be consumed by LLM applications, providing structured access to documentation from various 
+[MCPDoc](https://github.com/langchain-ai/mcpdoc) is a tool that serves documentation using the Model Context Protocol (MCP). It allows you to create
+documentation servers that can be consumed by LLM applications, providing structured access to documentation from various
 sources including local `llms.txt` files and direct URLs.
 
-This daemon provides automated monitoring and reloading capabilities for the `mcpdoc` server, making it easy to provide 
+This daemon provides automated monitoring and reloading capabilities for the `mcpdoc` server, making it easy to provide
 up-to-date documentation to LLMs using a single MCP server configuration.
 
 ## Features
@@ -195,10 +195,10 @@ The daemon monitors the `/config` directory for:
 - File creation/deletion
 - File moves
 
-The implementation uses the `watchdog` library with debouncing to prevent excessive restarts when multiple file changes 
+The implementation uses the `watchdog` library with debouncing to prevent excessive restarts when multiple file changes
 occur in rapid succession.
 
-When relevant files (`config.yaml`, `config.json`, or `*.llms.txt`) change, mcpdoc is automatically restarted with the 
+When relevant files (`config.yaml`, `config.json`, or `*.llms.txt`) change, mcpdoc is automatically restarted with the
 updated configuration.
 
 ## Containerization

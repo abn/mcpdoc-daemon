@@ -144,19 +144,25 @@ class MCPDocDaemon:
     """
 
     def __init__(
-        self, config_dir: str | None = None, host: str = "0.0.0.0", port: int = 8080
+        self,
+        config_dir: str | None = None,
+        host: str = "0.0.0.0",
+        port: int = 8080,
+        transport: str = "sse",
     ) -> None:
         """Initialize the MCPDoc daemon.
 
         :param config_dir: Directory containing configuration and documentation files
         :param host: Host address to bind the server to
         :param port: Port to bind the server to
+        :param transport: Transport method to use (sse or stdio)
         """
         self.config_dir = (
             Path(config_dir) if config_dir else Path.cwd().joinpath("config")
         )
         self.host = host
         self.port = port
+        self.transport = transport
         self.process: subprocess.Popen | None = None
         self.observer: Observer | None = None
         self.running: bool = False
@@ -224,19 +230,21 @@ class MCPDocDaemon:
         cmd.extend(["--timeout", str(10.0)])
         cmd.extend(["--allowed-domains", "*"])
 
-        # Use SSE transport with host and port
-        cmd.extend(
-            [
-                "--transport",
-                "sse",
-                "--host",
-                self.host,
-                "--port",
-                str(self.port),
-                "--log-level",
-                "INFO",
-            ]
-        )
+        # Use specified transport
+        cmd.extend(["--transport", self.transport])
+
+        # For SSE transport, add host and port
+        if self.transport == "sse":
+            cmd.extend(
+                [
+                    "--host",
+                    self.host,
+                    "--port",
+                    str(self.port),
+                ]
+            )
+
+        cmd.extend(["--log-level", "INFO"])
 
         logger.info(f"MCPDoc command: {' '.join(cmd)}")
         return cmd
@@ -253,38 +261,62 @@ class MCPDocDaemon:
             logger.info("Server is already running")
             return
 
-        # Check if port is available
-        max_retries = 3
-        retry_count = 0
-        retry_delay = 1  # seconds
+        # Check if port is available (only for SSE transport)
+        if self.transport == "sse":
+            max_retries = 3
+            retry_count = 0
+            retry_delay = 1  # seconds
 
-        while not is_port_available(self.host, self.port):
-            retry_count += 1
-            if retry_count > max_retries:
-                error_msg = (
-                    f"Port {self.port} is not available after {max_retries} retries"
+            while not is_port_available(self.host, self.port):
+                retry_count += 1
+                if retry_count > max_retries:
+                    error_msg = (
+                        f"Port {self.port} is not available after {max_retries} retries"
+                    )
+                    logger.error(error_msg)
+                    raise RuntimeError(error_msg)
+
+                logger.warning(
+                    f"Port {self.port} is not available, waiting {retry_delay} seconds (attempt {retry_count}/{max_retries})..."
                 )
-                logger.error(error_msg)
-                raise RuntimeError(error_msg)
-
-            logger.warning(
-                f"Port {self.port} is not available, waiting {retry_delay} seconds (attempt {retry_count}/{max_retries})..."
-            )
-            time.sleep(retry_delay)
-            retry_delay *= 2  # Exponential backoff
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
 
         try:
             cmd = self.build_mcpdoc_command()
 
-            logger.info(
-                f"Starting mcpdoc server on {self.host}:{self.port} with SSE transport"
-            )
-            self.process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                universal_newlines=True,
-            )
+            if self.transport == "sse":
+                logger.info(
+                    f"Starting mcpdoc server on {self.host}:{self.port} with SSE transport"
+                )
+                self.process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    universal_newlines=True,
+                )
+            elif self.transport == "stdio":
+                # For stdio transport, redirect stdin/stdout to the subprocess
+                # and ensure logs don't interfere with stdio
+                logger.info("Starting mcpdoc server with stdio transport")
+
+                # Configure logging to go to stderr only when using stdio transport
+                for handler in logging.getLogger().handlers:
+                    if (
+                        isinstance(handler, logging.StreamHandler)
+                        and handler.stream == sys.stdout
+                    ):
+                        handler.stream = sys.stderr
+
+                self.process = subprocess.Popen(
+                    cmd,
+                    stdin=sys.stdin,
+                    stdout=sys.stdout,
+                    stderr=sys.stderr,
+                )
+            else:
+                raise ValueError(f"Unsupported transport: {self.transport}")
+
             logger.info(f"Server process started with PID: {self.process.pid}")
 
         except Exception as e:
@@ -416,7 +448,9 @@ class MCPDocDaemon:
         """
         logger.info("Starting MCPDoc Daemon")
         logger.info(f"Config directory: {self.config_dir}")
-        logger.info(f"Server will bind to: {self.host}:{self.port}")
+        if self.transport == "sse":
+            logger.info(f"Server will bind to: {self.host}:{self.port}")
+        logger.info(f"Using transport: {self.transport}")
 
         self.list_configuration_files()
 
@@ -462,12 +496,14 @@ def main() -> None:
         --host: Host address to bind the server to
         --port: Port to bind the server to
         --log-level: Logging level (DEBUG, INFO, WARNING, ERROR)
+        --transport: Transport method to use (sse, stdio)
 
     Environment variables:
         MCPDOC_CONFIG_DIR: Default config directory if --config-dir not specified
         MCPDOC_HOST: Default host if --host not specified
         MCPDOC_PORT: Default port if --port not specified
         MCPDOC_LOG_LEVEL: Default log level if --log-level not specified
+        MCPDOC_TRANSPORT: Default transport if --transport not specified
     """
     import argparse
 
@@ -498,6 +534,12 @@ def main() -> None:
         default=os.environ.get("MCPDOC_LOG_LEVEL", "INFO"),
         help="Log level (default: INFO)",
     )
+    parser.add_argument(
+        "--transport",
+        choices=["sse", "stdio"],
+        default=os.environ.get("MCPDOC_TRANSPORT", "sse"),
+        help="Transport method to use (default: sse)",
+    )
 
     args = parser.parse_args()
 
@@ -505,7 +547,12 @@ def main() -> None:
     logging.getLogger().setLevel(getattr(logging, args.log_level))
 
     # Create and run daemon
-    daemon = MCPDocDaemon(config_dir=args.config_dir, host=args.host, port=args.port)
+    daemon = MCPDocDaemon(
+        config_dir=args.config_dir,
+        host=args.host,
+        port=args.port,
+        transport=args.transport,
+    )
 
     daemon.run()
 
