@@ -1,6 +1,6 @@
 [project]
 name = "mcpdoc-daemon"
-version = "0.2.0"
+version = "0.3.0"
 description = "A daemon that monitors configuration and llms.txt files and automatically reloads mcpdoc server when changes are detected"
 authors = [
   {name = "Arun Babu Neelicattu", email = "arun.neelicattu@gmail.com"},
