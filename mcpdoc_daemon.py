@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from platformdirs import user_config_dir
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -158,7 +159,7 @@ class MCPDocDaemon:
         :param transport: Transport method to use (sse or stdio)
         """
         self.config_dir = (
-            Path(config_dir) if config_dir else Path.cwd().joinpath("config")
+            Path(config_dir) if config_dir else Path(user_config_dir("mcpdoc"))
         )
         self.host = host
         self.port = port
@@ -507,7 +508,7 @@ def main() -> None:
     """
     import argparse
 
-    default_config_dir = Path.cwd().joinpath("config")
+    default_config_dir = Path(user_config_dir("mcpdoc"))
 
     parser = argparse.ArgumentParser(
         description="MCPDoc Daemon - File monitoring mcpdoc server"

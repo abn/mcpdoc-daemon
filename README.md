@@ -119,14 +119,22 @@ pipx install mcpdoc-daemon
 
 ## Quick Start
 
-1. Create a config directory:
+1. By default, the daemon will use a directory named `mcpdoc` in your platform's default config directory:
+   - On Linux: `~/.config/mcpdoc/`
+   - On macOS: `~/Library/Application Support/mcpdoc/`
+   - On Windows: `C:\Users\<username>\AppData\Local\mcpdoc\`
+
+   You can create this directory if it doesn't exist:
 ```bash
-mkdir config
+# For Linux
+mkdir -p ~/.config/mcpdoc
 ```
 
-2. Add your configuration files to the `config/` directory:
+2. Add your configuration files to this directory:
    - `config.yaml` - mcpdoc configuration
    - `*.llms.txt` - LLM text files (e.g., `fastapi.llms.txt`, `something.llms.txt`)
+
+   Alternatively, you can specify a custom config directory using the `--config-dir` option.
 
 3. Build and run the container:
 
@@ -156,15 +164,17 @@ podman run -d \
   --name mcpdoc-daemon \
   -p 8080:8080 \
   -v ./config:/config:z,ro \
-  ghcr.io/abn/mcpdoc-daemon:latest
+  ghcr.io/abn/mcpdoc-daemon:latest --config-dir /config
 ```
+
+Note: When using containers, you need to explicitly set the config directory to `/config` using the `--config-dir` option to use the mounted volume.
 
 ## Configuration Structure
 
-Your `config/` directory should contain:
+Your configuration directory should contain:
 
 ```
-config/
+<config-dir>/
 ├── config.yaml          # Main mcpdoc configuration (YAML format)
 ├── config.json          # Alternative JSON configuration (if no YAML)
 ├── fastapi.llms.txt     # FastAPI documentation URLs
@@ -172,14 +182,19 @@ config/
 └── ...                  # Additional .llms.txt files
 ```
 
+Where `<config-dir>` is either:
+- The platform's default config directory + `/mcpdoc` (default)
+- A custom directory specified with `--config-dir`
+- The `/config` directory when using containers with the appropriate volume mount
+
 **Note**: If both `config.yaml` and `config.json` exist, the daemon will prioritize `config.yaml` and pass it to mcpdoc using the `--yaml` flag. If only `config.json` exists, it will be passed using the `--json` flag.
 
 ## Generated Command
 
 The daemon will automatically generate and execute a command similar to:
 ```bash
-python -m mcpdoc.cli --yaml /config/config.yaml \
-  --urls "fastapi:/config/fastapi.llms.txt" "something:/config/something.llms.txt" \
+python -m mcpdoc.cli --yaml <config-dir>/config.yaml \
+  --urls "fastapi:<config-dir>/fastapi.llms.txt" "something:<config-dir>/something.llms.txt" \
   --follow-redirects --timeout 10.0 \
   --allowed-domains '*' \
   --transport sse \
@@ -188,9 +203,11 @@ python -m mcpdoc.cli --yaml /config/config.yaml \
   --log-level INFO
 ```
 
+Where `<config-dir>` is the path to your configuration directory.
+
 ## File Monitoring
 
-The daemon monitors the `/config` directory for:
+The daemon monitors your configuration directory for:
 - File modifications
 - File creation/deletion
 - File moves
@@ -232,10 +249,11 @@ The implementation (`mcpdoc_daemon.py`) offers several features:
 
 ### Environment Variables
 
-- `MCPDOC_CONFIG_DIR`: Configuration directory (default: `/config`)
+- `MCPDOC_CONFIG_DIR`: Configuration directory (default: `<platform config dir>/mcpdoc`)
 - `MCPDOC_HOST`: Server host (default: `0.0.0.0`)
 - `MCPDOC_PORT`: Server port (default: `8080`)
 - `MCPDOC_LOG_LEVEL`: Logging level (default: `INFO`)
+- `MCPDOC_TRANSPORT`: Transport method (default: `sse`)
 
 ### Command Line Options
 
